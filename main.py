@@ -1,46 +1,47 @@
-# Dependencias necesarias: pandas - PyMuPDF
 import os
 import fitz
 import re
 import pandas as pd
 
 def extract_keywords(text):
-    # Definir keywords para buscar
-    keywords = ["RESOL-2021", "RESOL-2022", "Date:", "VISTO:"]
+    # Definimos las keywords que necesitamos
+    keywords = ["RESOL-2021", "RESOL-2022", "Date:", "Art. 1."]
     found_keywords = []
 
     for keyword in keywords:
         if re.search(keyword, text, re.IGNORECASE):
-            # Extraemos el texto alrededor de la keyword
+            # Extraemos el texto lindante a la keyword
             match = re.search(keyword, text, re.IGNORECASE)
-            start = max(0, match.start() - 1)  # Extraemos 1 caracter antes de la keyword
-            end = match.end() + 120  # Extraemos 120 caracteres despues del keyword
+            start = max(0, match.start())
+            end = match.end()
 
-            # Extreamos X número de caracteres según la keyword encontrada
-            keyword_len = len(keyword)
+            # Extract a specific number of characters according to the found keyword
             if keyword in ["RESOL-2021", "RESOL-2022"]:
-                end = start + keyword_len + 10
+                fragmentoEncontrado = text[start:end+7]
             elif keyword == "Date:":
-                end = start + keyword_len + 25
-            elif keyword == "VISTO:":
-                end = start + keyword_len + 100
-            else:
-                end = start + 120
+                date_pattern = r"Date:\s*\d{1,2}/\d{1,2}/\d{4}"
+                date_match = re.search(date_pattern, text[start:], re.IGNORECASE)
+                if date_match:
+                    fragmentoEncontrado = date_match.group()
+                else:
+                    fragmentoEncontrado = text[start:end+11]
+            elif keyword == "Art. 1.":
+                fragmentoEncontrado = text[start:end+300]
 
-            found_keywords.append((keyword, text[start:match.start()], text[start + keyword_len:end]))
+            found_keywords.append((fragmentoEncontrado))
     
     return found_keywords
 
-directory_path = "./contentedorPDFs"
+directory_path = "./contenedorPDFs"
 
-# Creamos una lista/array para guardar las keywords
+# Creamos un array para almacenar las keywords
 keywords_list = []
 
-# Iteramos sobre todos los archivos en el directorio
+# Iteramos sobre los PDFs dentro la carpeta contenedora
 for file in os.listdir(directory_path):
     file_name, file_ext = os.path.splitext(file)
     if file_ext == ".pdf":
-        # Abrimos el archivo PDF
+        # Open the PDF file
         file_path = os.path.join(directory_path, file)
         with fitz.open(file_path) as pdf:
             print(f"File: {file_name}")
@@ -52,14 +53,14 @@ for file in os.listdir(directory_path):
 
             keywords_list.append(keywords)
 
-# Creamos un DataFrame de las keywords extraidas
-df = pd.DataFrame(keywords_list, columns=["NOMBRE", "DESCRIPCION", "FECHA"])
+# Create a DataFrame from the extracted keywords
+df = pd.DataFrame(keywords_list, columns=["NOMBRE", "FECHA", "DESCRIPCION"])
 
-# Mostramos el DataFrame
+# Display the DataFrame
 print(df)
 
-# Guardamos el DataFrame en un archivo Excel
+# Save the DataFrame to an Excel file
 df.to_excel("testeo.xlsx", index=False)
 
-# Print un mensaje de success en la consola
-print("Data guardada en testeo.xlsx")
+# Print a success message to the console
+print("Data almacenada correctamente en: testeo.xlsx")
